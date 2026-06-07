@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JudolScan — Sistem Deteksi Judi Online</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg:        #0A0C10;
+            --bg-card:   #0F1117;
+            --bg-raised: #161B26;
+            --border:    rgba(255,255,255,0.07);
+            --border-hi: rgba(255,255,255,0.14);
+            --red:       #FF3B4E;
+            --red-dim:   rgba(255,59,78,0.15);
+            --red-glow:  rgba(255,59,78,0.25);
+            --green:     #00E5A0;
+            --green-dim: rgba(0,229,160,0.12);
+            --amber:     #FFAB40;
+            --blue:      #38B6FF;
+            --text:      #E2E8F0;
+            --text-dim:  #64748B;
+            --text-mid:  #94A3B8;
+            --mono:      'IBM Plex Mono', monospace;
+            --display:   'Syne', sans-serif;
+            --body:      'Inter', sans-serif;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--body);
+            background-color: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── NOISE OVERLAY ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        /* ── GRADIENT BLOBS ── */
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .blob-1 { width: 500px; height: 500px; background: rgba(255,59,78,0.06); top: -100px; right: -100px; }
+        .blob-2 { width: 400px; height: 400px; background: rgba(56,182,255,0.05); bottom: -80px; left: -80px; }
+
+        /* ── LAYOUT ── */
+        .wrapper {
+            position: relative;
+            z-index: 1;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 56px 24px 80px;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            margin-bottom: 48px;
+            animation: slideDown 0.6s ease both;
+        }
+
+        .header-eyebrow {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.18em;
+            color: var(--red);
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-eyebrow::before {
+            content: '';
+            width: 28px;
+            height: 1.5px;
+            background: var(--red);
+            display: inline-block;
+        }
+
+        .header h1 {
+            font-family: var(--display);
+            font-size: clamp(2.4rem, 6vw, 3.8rem);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.03em;
+            color: #fff;
+            margin-bottom: 14px;
+        }
+
+        .header h1 span { color: var(--red); }
+
+        .header p {
+            color: var(--text-mid);
+            font-size: 1rem;
+            line-height: 1.6;
+            max-width: 520px;
+        }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            margin-bottom: 20px;
+            animation: fadeUp 0.6s 0.1s ease both;
+        }
+
+        /* ── MODEL SELECTOR ── */
+        .model-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 28px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px;
+        }
+
+        .model-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            padding: 10px 12px;
+            border-radius: 8px;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            white-space: nowrap;
+            text-align: center;
+            line-height: 1.3;
+        }
+
+        .model-btn small {
+            display: block;
+            font-size: 0.62rem;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+
+        .model-btn.active {
+            background: var(--bg-raised);
+            color: var(--text);
+            border: 1px solid var(--border-hi);
+        }
+
+        .model-btn.active .model-badge {
+            color: var(--green);
+        }
+
+        /* ── TABS ── */
+        .tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            padding: 12px 20px;
+            font-family: var(--body);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+            transition: all 0.25s;
+        }
+
+        .tab-btn.active {
+            color: var(--text);
+            border-bottom-color: var(--red);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeUp 0.3s ease both; }
+
+        /* ── TEXTAREA ── */
+        .input-wrap {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: var(--mono);
+            font-size: 0.88rem;
+            line-height: 1.7;
+            resize: vertical;
+            min-height: 140px;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: rgba(255,59,78,0.4);
+            box-shadow: 0 0 0 3px rgba(255,59,78,0.1);
+        }
+
+        textarea::placeholder { color: var(--text-dim); }
+
+        .char-hint {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+            text-align: right;
+        }
+
+        /* ── FILE UPLOAD ZONE ── */
+        .drop-zone {
+            border: 1.5px dashed var(--border-hi);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            background: var(--bg);
+            margin-bottom: 16px;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: rgba(255,59,78,0.5);
+            background: rgba(255,59,78,0.04);
+        }
+
+        .drop-zone input { display: none; }
+
+        .drop-icon {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .drop-zone p {
+            color: var(--text-mid);
+            font-size: 0.9rem;
+            margin-bottom: 6px;
+        }
+
+        .drop-zone small {
+            color: var(--text-dim);
+            font-family: var(--mono);
+            font-size: 0.72rem;
+        }
+
+        .file-chosen {
+            font-family: var(--mono);
+            font-size: 0.78rem;
+            color: var(--green);
+            margin-top: 8px;
+        }
+
+        /* ── SUBMIT BUTTON ── */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-family: var(--body);
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--red);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(255,59,78,0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #ff5060;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 28px rgba(255,59,78,0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-raised);
+            color: var(--text);
+            border: 1px solid var(--border-hi);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            border-color: rgba(255,255,255,0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── SCANNER ANIMATION ── */
+        .scanner-wrap {
+            display: none;
+            margin-top: 28px;
+            padding: 24px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .scanner-wrap.active { display: block; animation: fadeUp 0.3s ease; }
+
+        .scan-line-container {
+            width: 100%;
+            height: 3px;
+            background: var(--border);
+            border-radius: 99px;
+            overflow: hidden;
+            margin: 0 auto 14px;
+            max-width: 300px;
+        }
+
+        .scan-line {
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--red), transparent);
+            animation: scan 1.4s ease-in-out infinite;
+        }
+
+        @keyframes scan {
+            0%   { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+        }
+
+        .scan-text {
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            animation: blink 1.2s step-end infinite;
+        }
+
+        @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* ── RESULTS ── */
+        .results-section { animation: fadeUp 0.5s ease both; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px 16px;
+            text-align: center;
+            transition: transform 0.25s, border-color 0.25s;
+        }
+
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card.s-total:hover { border-color: rgba(56,182,255,0.4); }
+        .stat-card.s-judol:hover { border-color: rgba(255,59,78,0.4); }
+        .stat-card.s-aman:hover  { border-color: rgba(0,229,160,0.4); }
+
+        .stat-num {
+            font-family: var(--display);
+            font-size: 2.4rem;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .n-total { color: var(--blue); }
+        .n-judol { color: var(--red); }
+        .n-aman  { color: var(--green); }
+
+        .stat-label {
+            font-family: var(--mono);
+            font-size: 0.65rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+        }
+
+        /* ── SECTION LABEL ── */
+        .section-label {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        /* ── RESULT ITEMS ── */
+        .result-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .result-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 16px;
+            align-items: center;
+            animation: itemIn 0.35s ease both;
+            transition: border-color 0.25s;
+        }
+
+        @keyframes itemIn {
+            from { opacity: 0; transform: translateX(-8px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+
+        .result-item.is-danger {
+            border-left: 3px solid var(--red);
+            background: linear-gradient(90deg, rgba(255,59,78,0.04), var(--bg-card));
+        }
+
+        .result-item.is-success {
+            border-left: 3px solid var(--green);
+            background: linear-gradient(90deg, rgba(0,229,160,0.03), var(--bg-card));
+        }
+
+        .result-item.is-danger:hover { border-color: rgba(255,59,78,0.4); border-left-color: var(--red); }
+        .result-item.is-success:hover { border-color: rgba(0,229,160,0.35); border-left-color: var(--green); }
+
+        .item-text {
+            font-size: 0.9rem;
+            line-height: 1.55;
+            color: var(--text-mid);
+            word-break: break-word;
+        }
+
+        .item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 110px; }
+
+        .badge {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            padding: 5px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        .badge-danger  { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,59,78,0.25); }
+        .badge-success { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,229,160,0.2); }
+
+        /* ── CONFIDENCE BAR ── */
+        .conf-wrap { width: 100%; }
+
+        .conf-label {
+            font-family: var(--mono);
+            font-size: 0.62rem;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+            text-align: right;
+        }
+
+        .conf-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--bg);
+            border-radius: 99px;
+            overflow: hidden;
+        }
+
+        .conf-fill {
+            height: 100%;
+            border-radius: 99px;
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.23,1,0.32,1);
+        }
+
+        .conf-fill.danger  { background: var(--red); }
+        .conf-fill.success { background: var(--green); }
+
+        /* ── FOOTER ── */
+        .footer {
+            text-align: center;
+            margin-top: 48px;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            line-height: 2;
+        }
+
+        /* ── ANIMATIONS ── */
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeUp    { from { opacity: 0; transform: translateY(12px); }  to { opacity: 1; transform: translateY(0); } }
+
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 99px; }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 560px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .model-bar  { flex-direction: column; }
+            .card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<div class="wrapper">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-eyebrow">ML Threat Detection System</div>
+        <h1>Judol<span>Scan</span></h1>
+        <p>Deteksi konten judi online dari teks komentar menggunakan model klasifikasi machine learning — XGBoost, LightGBM, dan CatBoost.</p>
+    </div>
+
+    <!-- MAIN CARD -->
+    <div class="card">
+
+        <!-- MODEL SELECTOR -->
+        <div class="model-bar" id="modelBar">
+            <button class="model-btn" data-model="XGBoost" onclick="selectModel(this)">
+                XGBoost<small class="model-badge">Model 1</small>
+            </button>
+            <button class="model-btn active" data-model="LightGBM" onclick="selectModel(this)">
+                LightGBM<small class="model-badge" style="color:var(--green)">Model 2</small>
+            </button>
+            <button class="model-btn" data-model="CatBoost" onclick="selectModel(this)">
+                CatBoost<small class="model-badge">Model 3</small>
+            </button>
+        </div>
+
+        <!-- TABS -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('manual', this)">Input Manual</button>
+            <button class="tab-btn" onclick="switchTab('upload', this)">Analisis CSV Massal</button>
+        </div>
+
+        <!-- TAB: MANUAL -->
+        <div id="tab-manual" class="tab-content active">
+            <div class="input-wrap">
+                <textarea id="textInput" placeholder="Ketik komentar di sini...&#10;Gunakan baris baru (Enter) untuk teks berbeda." oninput="updateCharCount()"></textarea>
+            </div>
+            <p class="char-hint"><span id="lineCount">0</span> baris · <span id="charCount">0</span> karakter</p>
+            <button class="btn btn-primary" id="btnManual" onclick="analyzeText()">
+                ⚡ Analisis Sekarang
+            </button>
+        </div>
+
+        <!-- TAB: CSV -->
+        <div id="tab-upload" class="tab-content">
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('csvInput').click()">
+                <input type="file" id="csvInput" accept=".csv" onchange="onFileChange()">
+                <span class="drop-icon">📂</span>
+                <p>Klik atau seret file CSV ke sini</p>
+                <small>Format: kolom 'comment', 'teks', atau 'text' · maks 50 MB</small>
+                <div class="file-chosen" id="fileChosen"></div>
+            </div>
+            <button class="btn btn-secondary" id="btnUpload" onclick="uploadCSV()">
+                ↓ Proses &amp; Unduh Hasil CSV
+            </button>
+        </div>
+
+        <!-- SCANNER -->
+        <div class="scanner-wrap" id="scanner">
+            <div class="scan-line-container"><div class="scan-line"></div></div>
+            <p class="scan-text" id="scanText">Memproses data...</p>
+        </div>
+
+    </div><!-- /card -->
+
+    <!-- RESULTS -->
+    <div class="results-section" id="resultsSection" style="display:none">
+
+        <div class="stats-grid">
+            <div class="stat-card s-total">
+                <div class="stat-num n-total" id="statTotal">0</div>
+                <div class="stat-label">Total Teks</div>
+            </div>
+            <div class="stat-card s-judol">
+                <div class="stat-num n-judol" id="statJudol">0</div>
+                <div class="stat-label">Terdeteksi Judol</div>
+            </div>
+            <div class="stat-card s-aman">
+                <div class="stat-num n-aman" id="statAman">0</div>
+                <div class="stat-label">Aman</div>
+            </div>
+        </div>
+
+        <p class="section-label">Rincian Prediksi</p>
+        <div class="result-list" id="resultList"></div>
+    </div>
+
+    <div class="footer">
+        JudolScan · Model: TF-IDF + Gradient Boosting Ensemble<br>
+        Telkom University Purwokerto · v2.0
+    </div>
+
+</div><!-- /wrapper -->
+
+<script>
+    let selectedModel = 'LightGBM';
+
+    // ── MODEL SELECTOR ──
+    function selectModel(el) {
+        document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+        el.classList.add('active');
+        selectedModel = el.dataset.model;
+    }
+
+    // ── TABS ──
+    function switchTab(name, el) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        document.getElementById('tab-' + name).classList.add('active');
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('scanner').classList.remove('active');
+    }
+
+    // ── CHAR COUNT ──
+    function updateCharCount() {
+        const val = document.getElementById('textInput').value;
+        document.getElementById('charCount').textContent = val.length;
+        const lines = val.split('\n').filter(l => l.trim()).length;
+        document.getElementById('lineCount').textContent = lines;
+    }
+
+    // ── FILE PICK ──
+    function onFileChange() {
+        const file = document.getElementById('csvInput').files[0];
+        document.getElementById('fileChosen').textContent = file ? '✓ ' + file.name : '';
+    }
+
+    // ── DRAG & DROP ──
+    const dropZone = document.getElementById('dropZone');
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const dt = new DataTransfer();
+        dt.items.add(e.dataTransfer.files[0]);
+        document.getElementById('csvInput').files = dt.files;
+        onFileChange();
+    });
+
+    // ── SCANNER HELPERS ──
+    function showScanner(msg) {
+        document.getElementById('scanText').textContent = msg || 'Memproses data...';
+        document.getElementById('scanner').classList.add('active');
+        document.getElementById('resultsSection').style.display = 'none';
+    }
+    function hideScanner() { document.getElementById('scanner').classList.remove('active'); }
+
+    function setLoading(btnId, loading) {
+        const btn = document.getElementById(btnId);
+        btn.disabled = loading;
+        btn.style.opacity = loading ? '0.6' : '1';
+    }
+
+    // ── RENDER RESULTS ──
+    function renderResults(results, stats) {
+        document.getElementById('statTotal').textContent = stats.total;
+        document.getElementById('statJudol').textContent = stats.judol;
+        document.getElementById('statAman').textContent  = stats.aman;
+
+        const list = document.getElementById('resultList');
+        list.innerHTML = '';
+
+        results.forEach((item, i) => {
+            const isDanger = item.status === 'danger';
+            const confVal  = item.confidence ?? (isDanger ? 80 : 20);
+            const confDisplay = isDanger ? confVal : (100 - confVal);
+
+            const div = document.createElement('div');
+            div.className = `result-item ${isDanger ? 'is-danger' : 'is-success'}`;
+            div.style.animationDelay = `${i * 0.045}s`;
+            div.innerHTML = `
+                <div class="item-text">${escHtml(item.teks_asli)}</div>
+                <div class="item-right">
+                    <span class="badge badge-${isDanger ? 'danger' : 'success'}">
+                        ${isDanger ? '⚠ JUDOL' : '✓ AMAN'}
+                    </span>
+                    <div class="conf-wrap">
+                        <div class="conf-label">${isDanger ? 'P(Judol)' : 'P(Aman)'}: ${confDisplay.toFixed(1)}%</div>
+                        <div class="conf-bar">
+                            <div class="conf-fill ${isDanger ? 'danger' : 'success'}"
+                                 data-val="${confDisplay}" style="width:0%"></div>
+                        </div>
+                    </div>
+                </div>`;
+            list.appendChild(div);
+        });
+
+        document.getElementById('resultsSection').style.display = 'block';
+
+        // Animate bars after DOM paint
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.conf-fill').forEach(el => {
+                    el.style.width = el.dataset.val + '%';
+                });
+            });
+        });
+    }
+
+    function escHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── ANALYZE TEXT ──
+    async function analyzeText() {
+        const text = document.getElementById('textInput').value;
+        if (!text.trim()) { alert('Teks tidak boleh kosong!'); return; }
+
+        showScanner('Menganalisis ' + text.split('\n').filter(l=>l.trim()).length + ' baris...');
+        setLoading('btnManual', true);
+
+        try {
+            const res  = await fetch('/api/predict_text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, model: selectedModel }),
+            });
+            const data = await res.json();
+            hideScanner();
+            if (res.ok) renderResults(data.results, data.stats);
+            else        alert('Error: ' + data.error);
+        } catch (_) {
+            hideScanner();
+            alert('Koneksi gagal. Pastikan server Flask sudah berjalan di port 8080.');
+        }
+        setLoading('btnManual', false);
+    }
+
+    // ── UPLOAD CSV ──
+    async function uploadCSV() {
+        const fileInput = document.getElementById('csvInput');
+        if (!fileInput.files.length) { alert('Pilih file CSV terlebih dahulu.'); return; }
+
+        showScanner('Memproses file CSV...');
+        setLoading('btnUpload', true);
+
+        const formData = new FormData();
+        formData.append('file',  fileInput.files[0]);
+        formData.append('model', selectedModel);
+
+        try {
+            const res = await fetch('/api/predict_csv', { method: 'POST', body: formData });
+            hideScanner();
+            if (res.ok) {
+                const blob = await res.blob();
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href = url;
+                a.download = 'hasil_' + fileInput.files[0].name;
+                a.click();
+                URL.revokeObjectURL(url);
+            } else {
+                const err = await res.json();
+                alert('Error: ' + err.error);
+            }
+        } catch (_) {
+            hideScanner();
+            alert('Koneksi gagal. Pastikan server Flask sudah berjalan di port 8080.');
+        }
+        setLoading('btnUpload', false);
+    }
+
+    // ── KEYBOARD SHORTCUT: Ctrl+Enter submit ──
+    document.getElementById('textInput').addEventListener('keydown', e => {
+        if (e.ctrlKey && e.key === 'Enter') analyzeText();
+    });
+</script>
+
+</body>
+</html>
