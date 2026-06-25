@@ -6,22 +6,16 @@ import joblib
 class JudolDetector:
     def __init__(self, base_dir="."):
         self.base_dir = base_dir
-        # Gunakan list stopwords yang lengkap di sini
-        self.stopwords = set([
-            'yang','dan','di','ke','dari','ini','itu','dengan','untuk','adalah','akan',
-            'ada','juga','tidak','pada','karena','kita','dalam','saya','anda','sudah',
-            'bisa','lebih','kamu','mereka','jika','maka','atau','tetapi','namun','pun',
-            'apa','semua','banyak','ketika','setelah','sebelum','lagi','bila','bagaimana',
-            'mengapa','siapa','dimana','kapan','apakah','sedang','telah','pernah','hanya',
-            'seperti','kami','belum','kalau','sebuah','sebagai','oleh','tapi','hingga',
-            'sampai','yaitu','agar','supaya','meski','walaupun','sekali','sangat','terlalu',
-            'masih','selalu','sering','kadang','jarang','baik','buruk','besar','kecil',
-            'baru','lama','paling','amat','nya','kan','lah','kah','pun','si','sang',
-            'para','sih','nih','deh','dong','lo','lu','gue','gw','emang',
-            'banget','udah','aja','doang','saja','mah','nah','ya','yuk',
-            'dulu','nanti','tadi','barusan','sekarang','hari','malam','pagi','sore',
-            'sama','buat','soal','hal','cara','tempat','waktu','orang'
-        ])
+      # Membaca stopwords dari file stopwords.txt di folder yang sama
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        stopwords_path = os.path.join(current_dir, "stopwords.txt")
+        
+        try:
+            with open(stopwords_path, 'r', encoding='utf-8') as f:
+                self.stopwords = set(f.read().splitlines())
+        except FileNotFoundError:
+            self.stopwords = set() # Fallback jika file tidak ditemukan
+            
         self._load_resources()
 
     def _load_resources(self):
