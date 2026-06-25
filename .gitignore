@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Lingkungan Virtual (Virtual Environments)
+venv/
+env/
+ENV/
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Flask
+instance/
+.webassets-cache
+
+# Machine Learning Models
+# Abaikan file .pkl jika ukurannya sangat besar (limit GitHub biasanya 100MB).
+# Hapus dua baris di bawah ini JIKA lu memang butuh modelnya ada di dalam repo.
+*.pkl
+*.model
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
