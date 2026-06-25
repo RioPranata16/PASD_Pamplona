@@ -13,7 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.join(BASE_DIR, "models")
 
 judol_classifier = JudolDetector(base_dir=MODEL_DIR)
-DEFAULT_MODEL = "XGBoost"
+DEFAULT_MODEL = "CatBoost"
 
 @app.route("/")
 def home():
